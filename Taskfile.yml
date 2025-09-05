@@ -1,36 +1,205 @@
 version: '3'
 
+output: prefixed
+
+vars:
+  BINARY_NAME: scruffy
+  REPO: github.com/scottbrown/{{.BINARY_NAME}}
+  BUILD_DIR: .build
+  TEST_DIR: .test
+  DIST_DIR: .dist
+  MAIN_PACKAGE: ./cmd/{{ .BINARY_NAME }}
+  VERSION:
+    sh: |
+      if [ -n "$GITHUB_REF" ] && [[ "$GITHUB_REF" == refs/tags/* ]]; then
+        echo "${GITHUB_REF#refs/tags/}"
+      else
+        git rev-parse --abbrev-ref HEAD || echo "main"
+      fi
+  BUILD:
+    sh: git rev-parse --short HEAD || echo "unknown"
+  BUILD_FLAGS: "-X {{.REPO}}.version={{.VERSION}} -X {{.REPO}}.build={{.BUILD}}"
+
 tasks:
-  build:
-    desc: Build the scruffy binary
+  default:
     cmds:
-      - mkdir -p .build
-      - go build -o .build/scruffy ./cmd/scruffy
+      - task: build
+
+  clean:
+    desc: Clean build and test artifacts
+    cmds:
+      - rm -rf {{.BUILD_DIR}}
+      - rm -rf {{.TEST_DIR}}
+      - rm -rf {{.DIST_DIR}}
+
+  deps:
+    desc: Download and tidy dependencies
+    cmds:
+      - go mod download
+      - go mod tidy
+
+  format:
+    desc: Format Go code
+    cmds:
+      - go fmt ./...
+
+  lint:
+    desc: Run linting
+    cmds:
+      - go vet ./...
+
+  sast:
+    desc: Scans for code vulns
+    cmds:
+      - gosec ./...
+
+  vuln:
+    desc: Scans for 3rd party lib vulns
+    cmds:
+      - govulncheck ./...
+
+  coverage:
+    desc: Run test coverage
+    deps: [clean]
+    cmds:
+      - go test -v -race -coverprofile={{.TEST_DIR}}/coverage.out ./...
+      - go tool cover -html={{.TEST_DIR}}/coverage.out -o {{.TEST_DIR}}/coverage.html
+      - go tool cover -func={{.TEST_DIR}}/coverage.out
 
   test:
     desc: Run tests
     cmds:
-      - go test -v ./...
+      - go test ./...
 
-  test-coverage:
-    desc: Run tests with coverage
+  setup:
+    internal: true
+    run: once
     cmds:
-      - go test -v -coverprofile=coverage.out ./...
-      - go tool cover -html=coverage.out -o coverage.html
+      - mkdir -p {{.BUILD_DIR}}
+      - mkdir -p {{.DIST_DIR}}
+      - mkdir -p {{.TEST_DIR}}
 
-  lint:
-    desc: Run linter
+  build:
+    desc: "Builds a local binary"
+    deps: [deps]
     cmds:
-      - golangci-lint run
+      - go build -ldflags "{{.BUILD_FLAGS}}" -o {{.BUILD_DIR}}/{{.BINARY_NAME}} {{.REPO}}/cmd/{{.BINARY_NAME}}
+    sources:
+      - '**/*.go'
+    generates:
+      - '{{.BUILD_DIR}}/{{.BINARY_NAME}}'
 
-  clean:
-    desc: Clean build artifacts
+  release:
+    desc: Build release artifacts for multiple platforms
     cmds:
-      - rm -rf .build/
-      - rm -rf bin/
-      - rm -f coverage.out coverage.html
+      - task: clean
+      - task: setup
+      - task: release-darwin
+      - task: release-linux
+      - task: release-windows
 
-  install:
-    desc: Install the binary
+  release-darwin:
+    deps: [task: release-darwin-amd64, task: release-darwin-arm64]
+  release-linux:
+    deps: [task: release-linux-amd64, task: release-linux-arm64]
+  release-windows:
+    deps: [task: release-windows-amd64, task: release-windows-arm64]
+
+  release-core:
+    internal: true
+    env:
+      GOOS: linux
+      GOARCH: amd64
     cmds:
-      - go install ./cmd/scruffy
+      - tar -czf {{.DIST_DIR}}/{{.BINARY_NAME}}-{{.VERSION}}-{{.GOOS}}-{{.GOARCH}}.tar.gz -C {{.BUILD_DIR}}/{{.GOOS}}-{{.GOARCH}} {{.BINARY_NAME}}{{.FILE_EXT}}
+
+  release-linux-amd64:
+    deps: [build-linux-amd64]
+    cmds:
+      - task: release-core
+        vars: { GOOS: linux, GOARCH: amd64 }
+      
+  release-linux-arm64:
+    deps: [build-linux-arm64]
+    cmds:
+      - task: release-core
+        vars: { GOOS: linux, GOARCH: arm64 }
+      
+  release-windows-amd64:
+    deps: [build-windows-amd64]
+    cmds:
+      - task: release-core
+        vars: { GOOS: windows, GOARCH: amd64, FILE_EXT: ".exe" }
+      
+  release-windows-arm64:
+    deps: [build-windows-arm64]
+    cmds:
+      - task: release-core
+        vars: { GOOS: windows, GOARCH: arm64, FILE_EXT: ".exe" }
+      
+  release-darwin-amd64:
+    deps: [build-darwin-amd64]
+    cmds:
+      - task: release-core
+        vars: { GOOS: darwin, GOARCH: amd64 }
+      
+  release-darwin-arm64:
+    deps: [build-darwin-arm64]
+    cmds:
+      - task: release-core
+        vars: { GOOS: darwin, GOARCH: arm64 }
+
+  build-core:
+    internal: true
+    vars:
+      FLAGS: "-ldflags '{{.BUILD_FLAGS}}'"
+    env:
+      GOOS: "{{.GOOS}}"
+      GOARCH: "{{.GOARCH}}"
+    cmds:
+      - go build {{.FLAGS}} -o {{.BUILD_DIR}}/{{.GOOS}}-{{.GOARCH}}/{{.BINARY_NAME}}{{.FILE_EXT}} {{.REPO}}/cmd/{{.BINARY_NAME}}
+
+  build-darwin-amd64:
+    run: once
+    deps:
+      - task: build-core
+        vars: { GOOS: darwin, GOARCH: amd64 }
+
+  build-darwin-arm64:
+    run: once
+    deps:
+      - task: build-core
+        vars: { GOOS: darwin, GOARCH: arm64 }
+
+  build-linux-amd64:
+    run: once
+    deps:
+      - task: build-core
+        vars: { GOOS: linux, GOARCH: amd64 }
+
+  build-linux-arm64:
+    run: once
+    deps:
+      - task: build-core
+        vars: { GOOS: linux, GOARCH: arm64 }
+
+  build-windows-amd64:
+    run: once
+    deps:
+      - task: build-core
+        vars: { GOOS: windows, GOARCH: amd64, FILE_EXT: ".exe" }
+
+  build-windows-arm64:
+    run: once
+    deps:
+      - task: build-core
+        vars: { GOOS: windows, GOARCH: arm64, FILE_EXT: ".exe" }
+
+  build-all:
+    deps:
+      - build-darwin-amd64
+      - build-darwin-arm64
+      - build-linux-amd64
+      - build-linux-arm64
+      - build-windows-amd64
+      - build-windows-arm64
