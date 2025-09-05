@@ -14,24 +14,31 @@ Scruffy is a Go CLI tool for cleaning Cloudflare IP Access rules. It uses the of
 task build
 # or: go build -o .build/scruffy ./cmd/scruffy
 
+# Build for all platforms (darwin/linux/windows, amd64/arm64)
+task build-all
+
+# Create release artifacts with cross-compilation
+task release
+
 # Run all tests
 task test
-# or: go test -v ./...
+# or: go test ./...
 
-# Run tests with coverage (generates coverage.html)
-task test-coverage
+# Run tests with coverage (outputs to .test/ directory)
+task coverage
 
 # Run specific test
 go test -v -run TestFilterRulesByPrefix
 
-# Run linter
-task lint
+# Code quality checks
+task format     # Format code
+task lint       # Run go vet
+task sast       # Security analysis with gosec
+task vuln       # Vulnerability scanning with govulncheck
 
-# Clean build artifacts
-task clean
-
-# Install binary
-task install
+# Development helpers
+task deps       # Download and tidy dependencies
+task clean      # Clean all build artifacts (.build, .test, .dist)
 ```
 
 ### Running the Tool
@@ -84,13 +91,23 @@ The project follows Go's standard CLI layout with business logic in the root pac
 4. **Filtering**: Apply specific filters based on command (prefix, target, description)
 5. **Execution**: Preview (dry-run) or delete filtered rules with progress feedback
 
+### Build System
+- **Task Runner**: Uses [Taskfile](https://taskfile.dev/) for build automation
+- **Multi-platform**: Supports darwin, linux, windows on amd64/arm64
+- **Build Directories**: 
+  - `.build/` - Local development builds
+  - `.test/` - Test artifacts and coverage reports  
+  - `.dist/` - Release artifacts and cross-compiled binaries
+- **Version Info**: Embeds git commit and version info at build time
+
 ### Testing Strategy
 - Unit tests for filtering logic and command validation
 - Mock-friendly design with interfaces for external dependencies
 - Test coverage focused on business logic rather than API integration
 - Current coverage: ~40% (primarily business logic and utilities)
+- Security scanning with gosec and govulncheck
 
 ### Dependencies
 - **github.com/spf13/cobra**: CLI framework and command structure
-- **github.com/cloudflare/cloudflare-go**: Official Cloudflare API client
+- **github.com/cloudflare/cloudflare-go**: Official Cloudflare API client (v0.116.0)
 - Standard library for HTTP, context, and string operations

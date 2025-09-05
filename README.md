@@ -134,8 +134,14 @@ scruffy --zone-id abc123 clean target "AS64496"
 # Using Go
 go build -o .build/scruffy ./cmd/scruffy
 
-# Using Task
+# Using Task (builds to .build/scruffy)
 task build
+
+# Build for all platforms
+task build-all
+
+# Create release artifacts
+task release
 ```
 
 ### Testing
@@ -144,14 +150,37 @@ task build
 # Run tests
 task test
 
-# Run tests with coverage
-task test-coverage
+# Run tests with coverage (outputs to .test/ directory)
+task coverage
+
+# View coverage report
+open .test/coverage.html
 ```
 
-### Linting
+### Code Quality
 
 ```bash
+# Format code
+task format
+
+# Run linting
 task lint
+
+# Security analysis
+task sast
+
+# Vulnerability scanning
+task vuln
+```
+
+### Development
+
+```bash
+# Download and tidy dependencies
+task deps
+
+# Clean all build artifacts
+task clean
 ```
 
 ## License
