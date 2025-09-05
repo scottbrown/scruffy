@@ -60,7 +60,7 @@ tasks:
 
   coverage:
     desc: Run test coverage
-    deps: [clean]
+    deps: [setup]
     cmds:
       - go test -v -race -coverprofile={{.TEST_DIR}}/coverage.out ./...
       - go tool cover -html={{.TEST_DIR}}/coverage.out -o {{.TEST_DIR}}/coverage.html
