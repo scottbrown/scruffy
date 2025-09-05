@@ -19,6 +19,7 @@ var rootCmd = &cobra.Command{
 	Long: `Scruffy is a CLI tool for cleaning Cloudflare IP Access rules.
 It can clean all records, records with specific prefixes, or specific records.
 Records can be IP addresses, CIDR blocks, or ASNs.`,
+  Version: Version(),
 }
 
 func Execute() error {
