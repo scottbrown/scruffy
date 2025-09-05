@@ -1,0 +1,36 @@
+version: '3'
+
+tasks:
+  build:
+    desc: Build the scruffy binary
+    cmds:
+      - mkdir -p .build
+      - go build -o .build/scruffy ./cmd/scruffy
+
+  test:
+    desc: Run tests
+    cmds:
+      - go test -v ./...
+
+  test-coverage:
+    desc: Run tests with coverage
+    cmds:
+      - go test -v -coverprofile=coverage.out ./...
+      - go tool cover -html=coverage.out -o coverage.html
+
+  lint:
+    desc: Run linter
+    cmds:
+      - golangci-lint run
+
+  clean:
+    desc: Clean build artifacts
+    cmds:
+      - rm -rf .build/
+      - rm -rf bin/
+      - rm -f coverage.out coverage.html
+
+  install:
+    desc: Install the binary
+    cmds:
+      - go install ./cmd/scruffy
