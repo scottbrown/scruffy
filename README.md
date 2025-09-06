@@ -1,4 +1,6 @@
-![Scruffy](docs/logo/logo.128x128.png)
+![Scruffy](docs/logo/logo.mini.128x128.png)
+
+# Scruffy
 
 A Go CLI tool for cleaning Cloudflare IP Access rules.
 
