@@ -1,6 +1,6 @@
 module github.com/scottbrown/scruffy
 
-go 1.25.1
+go 1.27.4
 
 require (
 	github.com/cloudflare/cloudflare-go v0.119.0

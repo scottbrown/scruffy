@@ -127,7 +127,7 @@ scruffy --zone-id abc123 clean target "AS64496"
 
 ### Prerequisites
 
-- Go 1.19+
+- Go 1.27.4+
 - [Task](https://taskfile.dev/) (optional, for task runner)
 
 ### Building
